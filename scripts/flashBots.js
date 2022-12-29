@@ -7,9 +7,9 @@ async function main(){
 
     const _fakeNft = await ethers.getContractFactory("FakeNFT")
     const fakeNft = await _fakeNft.deploy()
-    await _fakeNft.deployed()
+    await fakeNft.deployed()
 
-    console.log("FakeNFT address: ",_fakeNft.address)
+    console.log("FakeNFT address: ",fakeNft.address)
 
     const provider = new ethers.providers.WebSocketProvider(
         process.env.QUICKNODE_WS_URL,
@@ -27,6 +27,30 @@ async function main(){
         "goerli"
     )
 
-    
+    provider.on("block", async(blockNumber)=>{
+        console.log("Block Number: ", blockNumber)
 
-}
+        const bundleResponse = await flashbotsProvider.sendBundle(
+            [
+                {
+                    transaction: {
+                        chainId: 5,
+                        type: 2,
+                        value: ethers.utils.parseEther('0.01'),
+                        to: fakeNft.address,
+                        data: fakeNft.interface.getSighash("mint()"),
+                        maxFeePerGas: BigNumber.from(10).pow(8).mul(3),
+                        maxPriorityFeePerGas: BigNumber.from(10).pow(8).mul(2),
+                    },
+                    signer: signer
+                },
+            ],
+            blockNumber + 1
+        )
+
+        if ("error" in bundleResponse) {
+            console.log(bundleResponse.error.message);
+          }
+        });
+    } 
+main()
